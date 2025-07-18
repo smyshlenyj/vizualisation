@@ -95,5 +95,8 @@ group 5. Подтверждение заказа
   UI -> Customer : showConfirmation(orderData)
   deactivate UI
   deactivate OC
+    note right of UI
+    Клиенту отображается сообщение об успешном заказе.
+  end note
 end group
 @enduml
