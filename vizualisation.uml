@@ -1,0 +1,99 @@
+@startuml
+skinparam actor {
+    BackgroundColor #95C8D8
+    BorderColor Black
+}
+skinparam participant {
+    BackgroundColor #F0F0F0
+    BorderColor Green 
+}
+skinparam database {
+    BackgroundColor #FFD700
+    BorderColor Black 
+}
+skinparam sequenceMessageAlign left
+
+actor Customer
+participant "Web UI" as UI
+participant "Order Controller" as OC
+participant "Payment Service" as PS
+database "Database" as DB
+participant "Notification Service" as NS
+
+group 1. Редактирование корзины
+  Customer -> UI : updateCart(items)
+  activate UI
+  UI -> OC : updateCart(items)
+  activate OC
+  OC -> DB : updateCartInDB(items)
+  activate DB
+  DB -[#green]-> OC : updateStatus
+  deactivate DB
+  OC -> UI : cartUpdated(items)
+  deactivate OC
+  UI -> Customer : showUpdatedCart()
+  deactivate UI
+  note right of UI
+    Покупатель может изменить корзину
+    перед оформлением заказа.
+  end note
+end group
+
+group 2. Создание заказа
+  Customer -> UI : placeOrder(orderDetails)
+  activate UI
+  UI -> OC : submitOrderData(orderDetails)
+  deactivate UI
+
+  activate OC
+  OC -> DB : saveOrder(orderDetails)
+  activate DB
+  DB -[#green]-> OC : saveResult
+  deactivate DB
+end group
+
+group 3. Оплата
+  OC -> PS : processPayment(paymentDetails)
+  activate PS
+
+  alt Успешная оплата
+    PS -[#green]-> OC : paymentResult(success)
+    OC -[#lightblue]-> NS : notifyCustomer(orderConfirmed)
+    note right of NS
+      Асинхронное уведомление покупателю
+      об успешной оплате.
+    end note
+
+  else Неуспешная оплата
+    PS -[#red]-> OC : paymentResult(error)
+    
+    alt Save as draft
+      OC -> DB : saveAsDraft(orderDetails)
+      activate DB
+      DB -[#red]-> OC : draftSaved
+      deactivate DB
+      note right of DB
+        Заказ сохранён как черновик,
+        так как оплата не прошла.
+      end note
+    end alt
+  end alt
+  deactivate PS
+end group
+
+group 4. Оповещение
+  OC -[#lightblue]-> NS : notifyManager(orderPlaced)
+  note right of NS
+    Асинхронное уведомление менеджеру
+    после оформления заказа.
+  end note
+end group
+
+group 5. Подтверждение заказа
+  OC -> UI : sendConfirmation(orderData)
+  activate UI
+  UI -> Customer : showConfirmation(orderData)
+  deactivate UI
+  deactivate OC
+end group
+@enduml
